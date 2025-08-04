@@ -1,6 +1,7 @@
 package check.demo.service;
 
 import check.demo.dto.HealthMetricEventDto;
+import check.demo.model.FFProbeResult;
 import check.demo.model.HealthMetric;
 import check.demo.repository.HealthMetricRepository;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+
+import static check.demo.service.FFProbeUtil.runFFProbe;
 
 @Slf4j
 @Service
@@ -31,7 +34,7 @@ public class HealthCheckService {
     private final HealthMetricRepository repository;
     private final KafkaEventProducer producer;
     private final IcmpChecker icmpChecker; 
-    private final FfprobeChecker ffprobeChecker;
+//    private final FfprobeChecker ffprobeChecker;
 
     @Async
     public void check(Long cctvId, String ip) {
@@ -39,7 +42,8 @@ public class HealthCheckService {
         log.info("rtsp://{}:*****@{}:{}{}", username, ip, port, path);
 
         IcmpChecker.IcmpResult icmp = icmpChecker.check(ip);
-        FfprobeChecker.StreamStatus streamStatus = ffprobeChecker.check(rtspUrl);
+        FFProbeResult result = runFFProbe(rtspUrl);
+//        FfprobeChecker.StreamStatus streamStatus = ffprobeChecker.check(rtspUrl);
 
         HealthMetric metric = new HealthMetric();
         metric.setCctvId(cctvId);
@@ -71,7 +75,7 @@ public class HealthCheckService {
             metric.setIcmpPacketLossPct(icmp.getPacketLossPct());
         }
       
-        switch (streamStatus) {
+        switch (result.getStatus()) {
             case OK -> {
                 metric.setHlsStatus(true);
                 metric.setEventCode(icmp.isSuccess() ? "HLS_OK" : "ICMP_FAIL");
@@ -80,17 +84,13 @@ public class HealthCheckService {
                 metric.setHlsStatus(false);
                 metric.setEventCode("HLS_TIMEOUT");
             }
-            case NOT_FOUND -> {
-                metric.setHlsStatus(false);
-                metric.setEventCode("HLS_NOT_FOUND");
-            }
             case ERROR -> {
                 metric.setHlsStatus(false);
                 metric.setEventCode("HLS_ERROR");
             }
-            case DOWN -> {
+            case PORT_UNREACHABLE -> {
                 metric.setHlsStatus(false);
-                metric.setEventCode("RTSP_DOWN");
+                metric.setEventCode("RTSP_PORT_FAIL");
             }
         }
 
@@ -105,6 +105,6 @@ public class HealthCheckService {
         dto.setIcmpAvgRttMs(metric.getIcmpAvgRttMs());
         dto.setIcmpPacketLossPct(metric.getIcmpPacketLossPct());
 
-        producer.sendEvent(dto);
+//        producer.sendEvent(dto);
     }
 }
