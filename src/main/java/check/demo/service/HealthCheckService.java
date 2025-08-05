@@ -3,6 +3,7 @@ package check.demo.service;
 import check.demo.dto.HealthMetricEventDto;
 import check.demo.model.FFProbeResult;
 import check.demo.model.HealthMetric;
+import check.demo.model.IcmpResult;
 import check.demo.repository.HealthMetricRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,51 +34,51 @@ public class HealthCheckService {
 
     private final HealthMetricRepository repository;
     private final KafkaEventProducer producer;
-    private final IcmpChecker icmpChecker; 
-//    private final FfprobeChecker ffprobeChecker;
+    private final IcmpChecker icmpChecker;
 
     @Async
     public void check(Long cctvId, String ip) {
         String rtspUrl = String.format("rtsp://%s:%s@%s:%s%s", username, password, ip, port, path);
         log.info("rtsp://{}:*****@{}:{}{}", username, ip, port, path);
 
-        IcmpChecker.IcmpResult icmp = icmpChecker.check(ip);
+        IcmpResult icmp = icmpChecker.check(ip);
         FFProbeResult result = runFFProbe(rtspUrl);
-//        FfprobeChecker.StreamStatus streamStatus = ffprobeChecker.check(rtspUrl);
 
         HealthMetric metric = new HealthMetric();
         metric.setCctvId(cctvId);
         metric.setTimestamp(LocalDateTime.now());
 
-        if (icmp == null) {
-            // ❌ ping 자체 실패
-            metric.setIcmpStatus(false);
-            metric.setEventCode("ICMP_FAILED");
-            metric.setIcmpAvgRttMs(null);
-            metric.setIcmpPacketLossPct(null);
-        } else if (!icmp.isSuccess()) {
-            // ❗ 응답 없음
-            metric.setIcmpStatus(false);
-            metric.setEventCode("ICMP_TIMEOUT");
-            metric.setIcmpAvgRttMs(icmp.getAvgRtt());
-            metric.setIcmpPacketLossPct(icmp.getPacketLossPct());
-        } else if (icmp.getPacketLossPct() > 0) {
-            // ⚠ 패킷 손실 있음
-            metric.setIcmpStatus(true); // 응답은 있으므로 true
-            metric.setEventCode("ICMP_LOSS");
-            metric.setIcmpAvgRttMs(icmp.getAvgRtt());
-            metric.setIcmpPacketLossPct(icmp.getPacketLossPct());
-        } else {
-            // ✅ 정상 응답
-            metric.setIcmpStatus(true);
-            metric.setEventCode("ICMP_OK");
-            metric.setIcmpAvgRttMs(icmp.getAvgRtt());
-            metric.setIcmpPacketLossPct(icmp.getPacketLossPct());
+        // ICMP 상태 처리
+        switch (icmp.getStatus()) {
+            case FAILED -> {
+                metric.setIcmpStatus(false);
+                metric.setEventCode("ICMP_FAILED");
+                metric.setIcmpAvgRttMs(null);
+                metric.setIcmpPacketLossPct(null);
+            }
+            case TIMEOUT -> {
+                metric.setIcmpStatus(false);
+                metric.setEventCode("ICMP_TIMEOUT");
+                metric.setIcmpAvgRttMs(icmp.getAvgRttMs());
+                metric.setIcmpPacketLossPct(icmp.getPacketLossPct());
+            }
+            case OK -> {
+                metric.setIcmpStatus(true);
+                if (icmp.getPacketLossPct() != null && icmp.getPacketLossPct() > 0) {
+                    metric.setEventCode("ICMP_LOSS");
+                } else {
+                    metric.setEventCode("ICMP_OK");
+                }
+                metric.setIcmpAvgRttMs(icmp.getAvgRttMs());
+                metric.setIcmpPacketLossPct(icmp.getPacketLossPct());
+            }
         }
-      
+
+        // HLS 상태 처리
         switch (result.getStatus()) {
             case OK -> {
                 metric.setHlsStatus(true);
+                // ICMP가 실패한 경우에는 HLS OK라도 별도 코드 부여
                 metric.setEventCode(icmp.isSuccess() ? "HLS_OK" : "ICMP_FAIL");
             }
             case TIMEOUT -> {
@@ -94,6 +95,7 @@ public class HealthCheckService {
             }
         }
 
+        // 저장 및 Kafka 전송
         repository.save(metric);
 
         HealthMetricEventDto dto = new HealthMetricEventDto();
@@ -105,6 +107,6 @@ public class HealthCheckService {
         dto.setIcmpAvgRttMs(metric.getIcmpAvgRttMs());
         dto.setIcmpPacketLossPct(metric.getIcmpPacketLossPct());
 
-//        producer.sendEvent(dto);
+        producer.sendEvent(dto); // 주석 풀었음
     }
 }
