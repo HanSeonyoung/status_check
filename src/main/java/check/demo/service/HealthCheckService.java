@@ -107,6 +107,6 @@ public class HealthCheckService {
         dto.setIcmpAvgRttMs(metric.getIcmpAvgRttMs());
         dto.setIcmpPacketLossPct(metric.getIcmpPacketLossPct());
 
-        producer.sendEvent(dto); // 주석 풀었음
+//        producer.sendEvent(dto);
     }
 }
