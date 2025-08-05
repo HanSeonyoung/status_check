@@ -21,9 +21,10 @@ jobs:
     - name: Build Docker image
       run: |
         TAG=${GITHUB_SHA::7}
-        docker build -t ${{ secrets.DOCKER_USERNAME }}/action-test .
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/action-test:$TAG -t ${{ secrets.DOCKER_USERNAME }}/action-test:latest .
 
     - name: Push Docker image
       run: |
+        TAG=${GITHUB_SHA::7}
+        docker push ${{ secrets.DOCKER_USERNAME }}/action-test:$TAG
         docker push ${{ secrets.DOCKER_USERNAME }}/action-test:latest
-
