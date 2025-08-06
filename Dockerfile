@@ -8,5 +8,5 @@ RUN gradle build -x test
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=builder /home/gradle/project/build/libs/*.jar app.jar
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Duser.timezone=Asia/Seoul", "-jar", "app.jar"]
 
