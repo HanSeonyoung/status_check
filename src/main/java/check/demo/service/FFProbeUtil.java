@@ -20,7 +20,7 @@ public class FFProbeUtil {
                 "ffprobe",
                 "-v", "error",
                 "-rtsp_transport", "tcp",
-                "-stimeout", "5000000",               // 안전한 대체 옵션
+                "-rw_timeout", "5000000",               // 안전한 대체 옵션
                 "-analyzeduration", "1000000",     // 분석 시간 최소화
                 "-probesize", "32",                // 스트림 초기 샘플 크기 최소화
                 "-show_entries", "stream=codec_name:format=duration",
