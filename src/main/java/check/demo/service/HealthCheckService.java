@@ -46,7 +46,7 @@ public class HealthCheckService {
 
         HealthMetric metric = new HealthMetric();
         metric.setCctvId(cctvId);
-        metric.setTimestamp(LocalDateTime.now());
+        metric.setEventTimestamp(LocalDateTime.now());
 
         // ICMP 상태 처리
         switch (icmp.getStatus()) {
@@ -100,7 +100,7 @@ public class HealthCheckService {
 
         HealthMetricEventDto dto = new HealthMetricEventDto();
         dto.setCctvId(metric.getCctvId());
-        dto.setTimestamp(metric.getTimestamp());
+        dto.setTimestamp(metric.getEventTimestamp());
         dto.setIcmpStatus(metric.isIcmpStatus());
         dto.setHlsStatus(metric.isHlsStatus());
         dto.setEventCode(metric.getEventCode());

@@ -6,6 +6,7 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+@Table(name = "health_metrics")
 @Entity
 @Getter
 @Setter
@@ -16,7 +17,7 @@ public class HealthMetric {
     private Long id;
 
     private Long cctvId;
-    private LocalDateTime timestamp;
+    private LocalDateTime eventTimestamp;
     private boolean icmpStatus;
     private boolean hlsStatus;
     private String eventCode;
