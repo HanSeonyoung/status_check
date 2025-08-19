@@ -23,5 +23,7 @@ public class HealthMetric {
     private String eventCode;  // 초기 상태 코드 (예: "ICMP_FAILED", "HLS_TIMEOUT")
 
     private Double icmpAvgRttMs;      // RTT 평균 (ms)
+    private Double icmpMinRttMs;      // min값
+    private Double icmpMaxRttMs;      // max값
     private Double icmpPacketLossPct; // 패킷 손실률 (%)
 }

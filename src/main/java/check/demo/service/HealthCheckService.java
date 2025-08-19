@@ -54,6 +54,8 @@ public class HealthCheckService {
         metric.setFfprobeStatusEnum(ffprobe.getStatus().name());
         metric.setIcmpAvgRttMs(icmp.getAvgRttMs());
         metric.setIcmpPacketLossPct(icmp.getPacketLossPct());
+        metric.setIcmpMinRttMs(icmp.getMinRttMs());
+        metric.setIcmpMaxRttMs(icmp.getMaxRttMs());
 
         // eventCode 계산
         String eventCode = calculateEventCode(icmp, ffprobe);

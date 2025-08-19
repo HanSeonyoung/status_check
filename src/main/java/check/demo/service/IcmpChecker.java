@@ -1,3 +1,4 @@
+// src/main/java/check/demo/service/IcmpChecker.java
 package check.demo.service;
 
 import check.demo.model.IcmpResult;
@@ -12,56 +13,61 @@ import java.util.regex.Pattern;
 public class IcmpChecker {
 
     public IcmpResult check(String ip) {
-        // 입력값 검증
         if (ip == null || ip.trim().isEmpty() || !isValidIp(ip)) {
-            return new IcmpResult(IcmpResult.Status.UNDEFINED, false, null, null);
+            return new IcmpResult(IcmpResult.Status.UNDEFINED, false, null, null, null, null);
         }
         try {
             String os = System.getProperty("os.name").toLowerCase();
-            ProcessBuilder builder;
-
-            if (os.contains("win")) {
-                builder = new ProcessBuilder("ping", "-n", "4", "-w", "1000", ip);
-            } else {
-                builder = new ProcessBuilder("ping", "-c", "4", "-W", "1", ip);
-            }
+            ProcessBuilder builder = os.contains("win")
+                    ? new ProcessBuilder("ping", "-n", "4", "-w", "1000", ip)
+                    : new ProcessBuilder("ping", "-c", "4", "-W", "1", ip);
 
             builder.redirectErrorStream(true);
             Process process = builder.start();
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
-            double avgRtt = -1;
-            double packetLoss = -1;
 
-            Pattern packetPattern = Pattern.compile("(\\d+)%?\\s*packet loss|패킷.*(\\d+)%");
-            Pattern rttPattern = Pattern.compile("rtt min/avg/max.*=.*\\d+\\.\\d+/(\\d+\\.\\d+)|평균 = (\\d+)ms");
+            // ⬇️ 없으면 null 유지
+            Double rttMin = null, rttAvg = null, rttMax = null;
+            Double packetLoss = null;
+
+            // Linux 예: "rtt min/avg/max/mdev = 0.041/0.052/0.067/0.010 ms"
+            Pattern linuxRtt  = Pattern.compile("(?:rtt|round-trip) min/avg/max/(?:mdev|stddev) = ([\\d.]+)/([\\d.]+)/([\\d.]+)/");
+            Pattern linuxLoss = Pattern.compile("(\\d+)%\\s*packet loss");
+            // Windows(영/한) 예: "Minimum = 10ms, Maximum = 30ms, Average = 20ms" / "최소 = 10ms, 최대 = 30ms, 평균 = 20ms"
+            Pattern winRtt    = Pattern.compile("(?:Minimum|최소)\\s*=\\s*(\\d+)ms,\\s*(?:Maximum|최대)\\s*=\\s*(\\d+)ms,\\s*(?:Average|평균)\\s*=\\s*(\\d+)ms");
+            Pattern winLoss   = Pattern.compile("\\((\\d+)%\\s*(?:loss|손실)\\)");
 
             while ((line = reader.readLine()) != null) {
-                // 패킷 손실률 파싱
-                Matcher packetMatcher = packetPattern.matcher(line);
-                if (packetMatcher.find()) {
-                    String lossStr = packetMatcher.group(1);
-                    packetLoss = lossStr != null ? Double.parseDouble(lossStr) : null;
-                }
+                // 손실률
+                Matcher m1 = linuxLoss.matcher(line);
+                Matcher m2 = winLoss.matcher(line);
+                if (m1.find()) packetLoss = Double.valueOf(m1.group(1));
+                else if (m2.find()) packetLoss = Double.valueOf(m2.group(1));
 
-                // RTT 파싱
-                Matcher rttMatcher = rttPattern.matcher(line);
-                if (rttMatcher.find()) {
-                    String rttStr = rttMatcher.group(1) != null ? rttMatcher.group(1) : rttMatcher.group(2);
-                    avgRtt = rttStr != null ? Double.parseDouble(rttStr) : null;
+                // RTT
+                Matcher r1 = linuxRtt.matcher(line);
+                Matcher r2 = winRtt.matcher(line);
+                if (r1.find()) {
+                    rttMin = Double.valueOf(r1.group(1));
+                    rttAvg = Double.valueOf(r1.group(2));
+                    rttMax = Double.valueOf(r1.group(3));
+                } else if (r2.find()) {
+                    rttMin = Double.valueOf(r2.group(1));
+                    rttMax = Double.valueOf(r2.group(2));
+                    rttAvg = Double.valueOf(r2.group(3));
                 }
             }
 
             int exitCode = process.waitFor();
             if (exitCode != 0) {
-                return new IcmpResult(IcmpResult.Status.TIMEOUT, false, avgRtt, packetLoss);
+                return new IcmpResult(IcmpResult.Status.TIMEOUT, false, rttAvg, packetLoss, rttMin, rttMax);
             }
-
-            return new IcmpResult(IcmpResult.Status.OK, true, avgRtt, packetLoss);
+            return new IcmpResult(IcmpResult.Status.OK, true, rttAvg, packetLoss, rttMin, rttMax);
 
         } catch (Exception e) {
-            return new IcmpResult(IcmpResult.Status.FAILED, false, null, null);
+            return new IcmpResult(IcmpResult.Status.FAILED, false, null, null, null, null);
         }
     }
 
