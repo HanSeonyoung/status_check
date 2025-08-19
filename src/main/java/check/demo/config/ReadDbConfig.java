@@ -4,10 +4,10 @@ import jakarta.persistence.EntityManagerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
 import org.springframework.context.annotation.*;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.orm.jpa.*;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
@@ -28,19 +28,20 @@ public class ReadDbConfig {
     }
 
     @Bean(name = "readEmf")
-    public LocalContainerEntityManagerFactoryBean readEmf() {
-        var vendor = new HibernateJpaVendorAdapter();
-        var emf = new LocalContainerEntityManagerFactoryBean();
-        emf.setDataSource(readDataSource());
-        emf.setPackagesToScan("check.demo.model.read"); // Cctv 엔티티 패키지
-        emf.setJpaVendorAdapter(vendor);
-        emf.setPersistenceUnitName("read");
-        emf.setJpaPropertyMap(Map.of(
-                "hibernate.hbm2ddl.auto", "validate",
-                "hibernate.dialect", "org.hibernate.dialect.MariaDBDialect",
-                "hibernate.show_sql", "false"
-        ));
-        return emf;
+    public LocalContainerEntityManagerFactoryBean readEmf(
+            EntityManagerFactoryBuilder builder,
+            @Qualifier("readDataSource") DataSource dataSource) {
+
+        return builder
+                .dataSource(dataSource)
+                .packages("check.demo.model.read")  // Cctv 엔티티 패키지
+                .persistenceUnit("read")
+                .properties(Map.of(
+                        "hibernate.hbm2ddl.auto", "validate",
+                        "hibernate.dialect", "org.hibernate.dialect.MariaDBDialect",
+                        "hibernate.show_sql", "false"
+                ))
+                .build();
     }
 
     @Bean(name = "readTx")
