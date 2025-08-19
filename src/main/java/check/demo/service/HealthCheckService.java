@@ -66,6 +66,9 @@ public class HealthCheckService {
     }
 
     private String calculateEventCode(IcmpResult icmp, FFProbeResult ffprobe) {
+        log.info(icmp.toString());
+        log.info(ffprobe.toString());
+
         // UNDEFINED 상태 체크 (8번 레코드)
         if (icmp.getStatus() == IcmpResult.Status.UNDEFINED || ffprobe.getStatus() == FFProbeResult.Status.UNDEFINED) {
             return "UNDEFINED";
