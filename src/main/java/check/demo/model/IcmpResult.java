@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class IcmpResult {
     public enum Status {
-        OK, TIMEOUT, FAILED
+        OK, TIMEOUT, FAILED, UNDEFINED
     }
 
     private final Status status;

@@ -8,8 +8,8 @@ import java.time.LocalDateTime;
 public class HealthMetricEventDto {
     private Long cctvId;
     private LocalDateTime timestamp;
-    private boolean icmpStatus;
-    private boolean hlsStatus;
+    private String icmpStatusEnum;  // "OK", "TIMEOUT", "FAILED"
+    private String ffprobeStatusEnum;  // "OK", "TIMEOUT", "ERROR", "PORT_UNREACHABLE"
     private String eventCode;
 
     private Double icmpAvgRttMs;

@@ -17,6 +17,12 @@ import java.util.stream.Collectors;
 public class FFProbeUtil {
 
     public static FFProbeResult runFFProbe(String rtspUrl) {
+        // 입력값 검증
+        if (rtspUrl == null || rtspUrl.trim().isEmpty() || !rtspUrl.startsWith("rtsp://")) {
+            log.warn("Invalid RTSP URL: {}", rtspUrl);
+            return new FFProbeResult(FFProbeResult.Status.UNDEFINED, "Invalid RTSP URL", "");
+        }
+
         List<String> command = new ArrayList<>(List.of(
                 "ffprobe",
                 "-v", "error",

@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class FFProbeResult {
     public enum Status {
-        OK, TIMEOUT, ERROR, PORT_UNREACHABLE
+        OK, TIMEOUT, ERROR, PORT_UNREACHABLE, UNDEFINED
     }
 
     private final Status status;

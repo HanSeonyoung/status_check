@@ -35,6 +35,8 @@ public class HealthCheckService {
     private final HealthMetricRepository repository;
     private final IcmpChecker icmpChecker;
 
+    private static final double HIGH_RTT_THRESHOLD_MS = 200.0; // 고 RTT 기준 (ms)
+
     @Async
     @Transactional("metricsTx") // 메트릭 DB 트랜잭션
     public void check(Long cctvId, String ip) {
@@ -42,59 +44,96 @@ public class HealthCheckService {
         log.info("rtsp://{}:*****@{}:{}{}", username, ip, port, path);
 
         IcmpResult icmp = icmpChecker.check(ip);
-        FFProbeResult result = runFFProbe(rtspUrl);
+        FFProbeResult ffprobe = runFFProbe(rtspUrl);
 
         HealthMetric metric = new HealthMetric();
         metric.setCctvId(cctvId);
         metric.setEventTimestamp(LocalDateTime.now());
 
-        // ICMP 상태 처리
-        switch (icmp.getStatus()) {
-            case FAILED -> {
-                metric.setIcmpStatus(false);
-                metric.setEventCode("ICMP_FAILED");
-                metric.setIcmpAvgRttMs(null);
-                metric.setIcmpPacketLossPct(null);
-            }
-            case TIMEOUT -> {
-                metric.setIcmpStatus(false);
-                metric.setEventCode("ICMP_TIMEOUT");
-                metric.setIcmpAvgRttMs(icmp.getAvgRttMs());
-                metric.setIcmpPacketLossPct(icmp.getPacketLossPct());
-            }
-            case OK -> {
-                metric.setIcmpStatus(true);
-                if (icmp.getPacketLossPct() != null && icmp.getPacketLossPct() > 0) {
-                    metric.setEventCode("ICMP_LOSS");
-                } else {
-                    metric.setEventCode("ICMP_OK");
-                }
-                metric.setIcmpAvgRttMs(icmp.getAvgRttMs());
-                metric.setIcmpPacketLossPct(icmp.getPacketLossPct());
-            }
-        }
+        metric.setIcmpStatusEnum(icmp.getStatus().name());
+        metric.setFfprobeStatusEnum(ffprobe.getStatus().name());
+        metric.setIcmpAvgRttMs(icmp.getAvgRttMs());
+        metric.setIcmpPacketLossPct(icmp.getPacketLossPct());
 
-        // RTSP(HLS) 상태 처리
-        switch (result.getStatus()) {
-            case OK -> {
-                metric.setHlsStatus(true);
-                metric.setEventCode(icmp.isSuccess() ? "HLS_OK" : "ICMP_FAIL");
-            }
-            case TIMEOUT -> {
-                metric.setHlsStatus(false);
-                metric.setEventCode("HLS_TIMEOUT");
-            }
-            case ERROR -> {
-                metric.setHlsStatus(false);
-                metric.setEventCode("HLS_ERROR");
-            }
-            case PORT_UNREACHABLE -> {
-                metric.setHlsStatus(false);
-                metric.setEventCode("RTSP_PORT_FAIL");
-            }
-        }
+        // eventCode 계산
+        String eventCode = calculateEventCode(icmp, ffprobe);
+        metric.setEventCode(eventCode);
 
         // 메트릭 DB 저장
         repository.save(metric);
     }
+
+    private String calculateEventCode(IcmpResult icmp, FFProbeResult ffprobe) {
+        // UNDEFINED 상태 체크 (8번 레코드)
+        if (icmp.getStatus() == IcmpResult.Status.UNDEFINED || ffprobe.getStatus() == FFProbeResult.Status.UNDEFINED) {
+            return "UNDEFINED";
+        }
+
+        // ICMP와 FFProbe 모두 OK일 때 (1번 레코드)
+        if (icmp.getStatus() == IcmpResult.Status.OK && ffprobe.getStatus() == FFProbeResult.Status.OK
+                && (icmp.getAvgRttMs() == null || icmp.getAvgRttMs() < HIGH_RTT_THRESHOLD_MS)
+                && (icmp.getPacketLossPct() == null || icmp.getPacketLossPct() == 0)) {
+            return "OK";
+        }
+
+        // ICMP 상태 기반 코드
+        String icmpCode;
+        switch (icmp.getStatus()) {
+            case OK:
+                if (icmp.getAvgRttMs() != null && icmp.getAvgRttMs() >= HIGH_RTT_THRESHOLD_MS) {
+                    icmpCode = "NETWORK_CONGESTION"; // 레코드 4, 5
+                } else if (icmp.getPacketLossPct() != null && icmp.getPacketLossPct() > 0) {
+                    icmpCode = "ICMP_LOSS";
+                } else {
+                    icmpCode = "ICMP_OK";
+                }
+                break;
+            case TIMEOUT:
+                icmpCode = "ICMP_TIMEOUT";
+                break;
+            case FAILED:
+                icmpCode = "ICMP_FAILED";
+                break;
+            default:
+                icmpCode = "UNKNOWN";
+        }
+
+        // FFProbe 상태 기반 코드
+        String ffprobeCode;
+        switch (ffprobe.getStatus()) {
+            case OK:
+                ffprobeCode = "HLS_OK";
+                break;
+            case TIMEOUT:
+                ffprobeCode = "HLS_TIMEOUT"; // 레코드 6
+                break;
+            case ERROR:
+                ffprobeCode = "STREAM_DATA_CORRUPTION"; // 레코드 7
+                break;
+            case PORT_UNREACHABLE:
+                ffprobeCode = "RTSP_PORT_FAIL"; // 레코드 3
+                break;
+            default:
+                ffprobeCode = "UNKNOWN";
+        }
+
+        // 조합 로직 (주어진 테이블 기반)
+        if (icmp.getStatus() == IcmpResult.Status.FAILED && ffprobe.getStatus() == FFProbeResult.Status.PORT_UNREACHABLE) {
+            return "DEVICE_DOWN"; // 레코드 2
+        } else if (icmp.getStatus() == IcmpResult.Status.OK && icmp.getAvgRttMs() != null && icmp.getAvgRttMs() >= HIGH_RTT_THRESHOLD_MS && ffprobe.getStatus() == FFProbeResult.Status.OK) {
+            return "NETWORK_CONGESTION"; // 레코드 4
+        } else if (icmp.getStatus() == IcmpResult.Status.OK && icmp.getAvgRttMs() != null && icmp.getAvgRttMs() >= HIGH_RTT_THRESHOLD_MS && ffprobe.getStatus() == FFProbeResult.Status.ERROR) {
+            return "NETWORK_OVERLOAD"; // 레코드 5
+        } else if (icmp.getStatus() == IcmpResult.Status.OK && ffprobe.getStatus() == FFProbeResult.Status.TIMEOUT) {
+            return "SESSION_OR_RTSP_BUFFER"; // 레코드 6
+        } else if (icmp.getStatus() == IcmpResult.Status.OK && ffprobe.getStatus() == FFProbeResult.Status.ERROR) {
+            return "STREAM_DATA_CORRUPTION"; // 레코드 7
+        } else if (icmp.getStatus() == IcmpResult.Status.OK && ffprobe.getStatus() == FFProbeResult.Status.PORT_UNREACHABLE) {
+            return "RTSP_PORT_FAIL"; // 레코드 3
+        }
+
+        // 기본적으로 FFProbe 우선, 없으면 ICMP 코드
+        return ffprobeCode.equals("HLS_OK") ? icmpCode : ffprobeCode;
+    }
+
 }

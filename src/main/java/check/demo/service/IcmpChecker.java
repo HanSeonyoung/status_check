@@ -5,11 +5,17 @@ import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 public class IcmpChecker {
 
     public IcmpResult check(String ip) {
+        // 입력값 검증
+        if (ip == null || ip.trim().isEmpty() || !isValidIp(ip)) {
+            return new IcmpResult(IcmpResult.Status.UNDEFINED, false, null, null);
+        }
         try {
             String os = System.getProperty("os.name").toLowerCase();
             ProcessBuilder builder;
@@ -28,18 +34,22 @@ public class IcmpChecker {
             double avgRtt = -1;
             double packetLoss = -1;
 
+            Pattern packetPattern = Pattern.compile("(\\d+)%?\\s*packet loss|패킷.*(\\d+)%");
+            Pattern rttPattern = Pattern.compile("rtt min/avg/max.*=.*\\d+\\.\\d+/(\\d+\\.\\d+)|평균 = (\\d+)ms");
+
             while ((line = reader.readLine()) != null) {
-                if (line.contains("packets transmitted") || line.contains("패킷을 보냈고")) {
-                    String[] parts = line.split(",");
-                    if (parts.length >= 3) {
-                        packetLoss = Double.parseDouble(parts[2].replaceAll("[^0-9.]", ""));
-                    }
-                } else if (line.contains("rtt min/avg/max") || line.contains("평균 =")) {
-                    String[] parts = line.split("=");
-                    if (parts.length >= 2) {
-                        String[] rttParts = parts[1].trim().split("/");
-                        avgRtt = Double.parseDouble(rttParts[1]);
-                    }
+                // 패킷 손실률 파싱
+                Matcher packetMatcher = packetPattern.matcher(line);
+                if (packetMatcher.find()) {
+                    String lossStr = packetMatcher.group(1);
+                    packetLoss = lossStr != null ? Double.parseDouble(lossStr) : null;
+                }
+
+                // RTT 파싱
+                Matcher rttMatcher = rttPattern.matcher(line);
+                if (rttMatcher.find()) {
+                    String rttStr = rttMatcher.group(1) != null ? rttMatcher.group(1) : rttMatcher.group(2);
+                    avgRtt = rttStr != null ? Double.parseDouble(rttStr) : null;
                 }
             }
 
@@ -53,5 +63,10 @@ public class IcmpChecker {
         } catch (Exception e) {
             return new IcmpResult(IcmpResult.Status.FAILED, false, null, null);
         }
+    }
+
+    private boolean isValidIp(String ip) {
+        String ipPattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}$";
+        return ip != null && ip.matches(ipPattern);
     }
 }
