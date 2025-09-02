@@ -1,3 +1,4 @@
+--version old
 --CREATE TABLE IF NOT EXISTS health_metrics (
 --    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 --    cctv_id BIGINT NULL,
@@ -7,4 +8,17 @@
 --    icmp_packet_loss_pct DOUBLE NULL,
 --    icmp_status BOOLEAN NULL,
 --    event_timestamp TIMESTAMP(6) NULL
+--);
+--version new
+--CREATE TABLE IF NOT EXISTS health_metrics (
+--    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+--    cctv_id BIGINT NULL,
+--    event_timestamp DATETIME(6) NULL,
+--    icmp_status_enum VARCHAR(255) NULL,
+--    ffprobe_status_enum VARCHAR(255) NULL,
+--    event_code VARCHAR(255) NULL,
+--    icmp_avg_rtt_ms DOUBLE NULL,
+--    icmp_min_rtt_ms DOUBLE NULL,
+--    icmp_max_rtt_ms DOUBLE NULL,
+--    icmp_packet_loss_pct DOUBLE NULL
 --);
