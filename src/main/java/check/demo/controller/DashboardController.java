@@ -6,6 +6,7 @@ import check.demo.model.IcmpResult;
 import check.demo.model.metrics.HealthMetric;
 import check.demo.repository.metrics.HealthMetricRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,6 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/dashboard")
 @RequiredArgsConstructor
+@Slf4j
 public class DashboardController {
 
     private final HealthMetricRepository metricsRepo;
@@ -24,6 +26,7 @@ public class DashboardController {
             @PathVariable("id") Long cctvId,
             @RequestParam(name = "lim", defaultValue = "100") int lim
     ) {
+        log.info("request income via api");
         if (lim <= 0) lim = 1;
         if (lim > 1000) lim = 1000;
 
