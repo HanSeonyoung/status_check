@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: status-check-bridge
+  namespace: front
+spec:
+  type: ExternalName
+  externalName: status-check.sihyoun.svc.cluster.local
+  ports:
+    - port: 80

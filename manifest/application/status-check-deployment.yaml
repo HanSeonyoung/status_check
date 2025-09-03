@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: status-check
+  namespace: sihyoun
+  labels:
+    app: status-check
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: status-check
+  template:
+    metadata:
+      labels:
+        app: status-check
+    spec:
+      containers:
+        - name: status-check
+          image: hsy2001/status-check:latest
+          envFrom:
+            - configMapRef:
+                name: rtsp-config
+            - secretRef:
+                name: rtsp-secret
+            - configMapRef:
+                name: metrics-db-config
+            - secretRef:
+                name: metrics-db-secret
+            - configMapRef:
+                name: read-db-config
+            - secretRef:
+                name: read-db-secret

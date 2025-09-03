@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rtsp-config
+  namespace: { namespace }
+data:
+  RTSP_USERNAME: "nouu30133"
+  RTSP_PORT: "554"
+  RTSP_PATH: { path }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rtsp-secret
+  namespace: { namespace }
+type: Opaque
+stringData:
+  RTSP_PASSWORD: { password }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: metrics-db-config
+  namespace: { namespace }
+data:
+  METRICS_DB_DRIVER_CLASS_NAME: "org.mariadb.jdbc.Driver"
+  METRICS_DB_URL: { url }
+  METRICS_DB_USERNAME: { mysql user }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: metrics-db-secret
+  namespace: { namespace }
+type: Opaque
+stringData:
+  METRICS_DB_PASSWORD: { password }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: read-db-config
+  namespace: { namespace }
+data:
+  READ_DB_DRIVER_CLASS_NAME: "org.mariadb.jdbc.Driver"
+  READ_DB_URL: { url }
+  READ_DB_USERNAME: { mysql user }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: read-db-secret
+  namespace: { namespace }
+type: Opaque
+stringData:
+  READ_DB_PASSWORD: { password }
