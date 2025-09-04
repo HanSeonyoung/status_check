@@ -13,8 +13,8 @@ public class IcmpResult {
     private final Status status;
     private final boolean success;
     private final Double avgRttMs;
-    private final Double maxRttMs;
     private final Double minRttMs;
+    private final Double maxRttMs;
     private final Double packetLossPct;
 
 }
