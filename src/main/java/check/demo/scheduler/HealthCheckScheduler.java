@@ -23,7 +23,7 @@ public class HealthCheckScheduler {
     @Transactional(readOnly = true, transactionManager = "readTx")
     @Scheduled(cron = "*/10 * * * * *")
     public void run() {
-        List<Cctv> targets = cctvRepository.findAll();
+        List<Cctv> targets = cctvRepository.findByDeletedAtIsNull();
         // 한 줄씩 로그 출력
         for (Cctv cctv : targets ) {
             log.info("CCTV Loaded -> id={}, ip={}",
