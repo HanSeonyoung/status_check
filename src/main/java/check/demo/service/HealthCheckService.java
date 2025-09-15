@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import static check.demo.service.FFProbeUtil.runFFProbe;
 
@@ -66,10 +67,6 @@ public class HealthCheckService {
         metric.setIcmpPacketLossPct(icmp.getPacketLossPct());
         metric.setIcmpMinRttMs(icmp.getMinRttMs());
         metric.setIcmpMaxRttMs(icmp.getMaxRttMs());
-
-        // 전달값
-        double icmpAvgRttMs = icmp.getAvgRttMs();
-        double icmpPacketLossPct = icmp.getPacketLossPct();
 
         // eventCode 계산
         String eventCode = calculateEventCode(icmp, ffprobe);
@@ -163,6 +160,9 @@ public class HealthCheckService {
             return "STREAM_DATA_CORRUPTION"; // 레코드 7
         } else if (icmp.getStatus() == IcmpResult.Status.OK && ffprobe.getStatus() == FFProbeResult.Status.PORT_UNREACHABLE) {
             return "RTSP_PORT_FAIL"; // 레코드 3
+        } else if (icmp.getStatus() == IcmpResult.Status.TIMEOUT
+                && ffprobe.getStatus() == FFProbeResult.Status.PORT_UNREACHABLE) {
+            return "NETWORK_UNREACHABLE"; // 레코드 9
         }
 
         // 기본적으로 FFProbe 우선, 없으면 ICMP 코드

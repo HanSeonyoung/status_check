@@ -140,6 +140,12 @@ public class DevStatusCacheService {
                         CurrentCctvStatusCache.Severity.WARNING
                 );
 
+            case "NETWORK_UNREACHABLE":
+                return new StatusMapping(
+                        CurrentCctvStatusCache.CurrentStatus.WARNING,
+                        CurrentCctvStatusCache.ResponsibleRole.NETWORK_TECH,
+                        CurrentCctvStatusCache.Severity.WARNING
+                );
             case "ICMP_LOSS":
             case "ICMP_TIMEOUT":
             case "ICMP_FAILED":

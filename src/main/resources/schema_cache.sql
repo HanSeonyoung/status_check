@@ -24,12 +24,12 @@
 ---- 또는 새로 생성할 경우 전체 DDL
 --CREATE TABLE IF NOT EXISTS current_cctv_status_cache (
 --    cctv_id BIGINT NOT NULL COMMENT 'CCTV 고유 ID',
---    environment_mode ENUM('dev-env1', 'dev-env2', 'prod-env1', 'prod-env2') NOT NULL COMMENT '환경 구분',
---    current_status ENUM('unknown', 'active', 'offline', 'warning', 'critical')
---        NOT NULL DEFAULT 'unknown' COMMENT '관리자용 축약 상태',
+--    environment_mode ENUM('DEV_ENV1', 'DEV_ENV2', 'PROD_ENV1', 'PROD_ENV2') NOT NULL COMMENT '환경 구분',
+--    current_status ENUM('UNKNOWN', 'ACTIVE', 'OFFLINE', 'WARNING', 'CRITICAL')
+--        NOT NULL DEFAULT 'UNKNOWN' COMMENT '관리자용 축약 상태',
 --    event_code VARCHAR(50) NULL COMMENT '이벤트 코드 (ok, device_down, stream_port_fail 등)',
---    responsible_role ENUM('network_tech', 'device_tech', 'admin') NULL COMMENT '담당 역할',
---    severity ENUM('info', 'warning', 'critical') NOT NULL DEFAULT 'info' COMMENT '심각도',
+--    responsible_role ENUM('NETWORK_TECH', 'DEVICE_TECH', 'ADMIN') NULL COMMENT '담당 역할',
+--    severity ENUM('INFO', 'WARNING', 'CRITICAL') NOT NULL DEFAULT 'info' COMMENT '심각도',
 --    last_health_metric_id BIGINT NULL COMMENT '마지막 health_metrics ID 참조',
 --    icmp_avg_rtt_ms DOUBLE NULL COMMENT 'ICMP 평균 응답시간 (ms)',
 --    icmp_packet_loss_pct DOUBLE NULL COMMENT 'ICMP 패킷 손실률 (%)',

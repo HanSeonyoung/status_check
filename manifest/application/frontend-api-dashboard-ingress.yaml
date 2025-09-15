@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-api-dashboard
+  namespace: front
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: "/api/dashboard/$2"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: frontend.cccr4.com
+      http:
+        paths:
+          - path: /api/dashboard(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: status-check-bridge
+                port:
+                  number: 80
+    - host: frontend.cccr4opensource.com
+      http:
+        paths:
+          - path: /api/dashboard(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: status-check-bridge
+                port:
+                  number: 80

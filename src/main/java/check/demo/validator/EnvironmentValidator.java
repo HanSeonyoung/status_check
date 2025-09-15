@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,7 @@ import java.util.Objects;
 @Component
 @Slf4j
 @RequiredArgsConstructor
+@Profile("!test")
 public class EnvironmentValidator implements ApplicationListener<ApplicationReadyEvent> {
     private final AppProperties appProperties;
     private final RtspProperties rtspProperties;
