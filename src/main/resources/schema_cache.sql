@@ -1,0 +1,41 @@
+--CREATE TABLE IF NOT EXISTS current_cctv_status_cache (
+--    cctv_id BIGINT NOT NULL COMMENT 'CCTV 고유 ID',
+--    environment_mode ENUM('DEV_ENV1', 'DEV_ENV2', 'PROD_ENV1', 'PROD_ENV2') NOT NULL COMMENT '환경 구분',
+--    current_status ENUM('UNKNOWN', 'ACTIVE', 'OFFLINE', 'WARNING', 'CRITICAL')
+--        NOT NULL DEFAULT 'UNKNOWN' COMMENT '현재 상태',
+--    event_code VARCHAR(50) NULL COMMENT '이벤트 코드',
+--    responsible_role ENUM('NETWORK_TECH', 'DEVICE_TECH', 'ADMIN') NULL COMMENT '담당 역할',
+--    severity ENUM('INFO', 'WARNING', 'CRITICAL') NOT NULL DEFAULT 'INFO' COMMENT '심각도',
+--    last_health_metric_id BIGINT NULL COMMENT '마지막 health_metrics ID 참조',
+--    last_update_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+--
+--    PRIMARY KEY (cctv_id, environment_mode)
+--) DEFAULT CHARSET=utf8mb4
+--  COLLATE=utf8mb4_unicode_ci
+--  COMMENT='CCTV 현재 상태 캐시';
+
+-- DDL: current_cctv_status_cache 테이블 필드 추가
+
+---- 기존 테이블에 컬럼 추가
+--ALTER TABLE current_cctv_status_cache
+--ADD COLUMN icmp_avg_rtt_ms DOUBLE NULL COMMENT 'ICMP 평균 응답시간 (ms)' AFTER last_health_metric_id,
+--ADD COLUMN icmp_packet_loss_pct DOUBLE NULL COMMENT 'ICMP 패킷 손실률 (%)' AFTER icmp_avg_rtt_ms;
+--
+---- 또는 새로 생성할 경우 전체 DDL
+--CREATE TABLE IF NOT EXISTS current_cctv_status_cache (
+--    cctv_id BIGINT NOT NULL COMMENT 'CCTV 고유 ID',
+--    environment_mode ENUM('DEV_ENV1', 'DEV_ENV2', 'PROD_ENV1', 'PROD_ENV2') NOT NULL COMMENT '환경 구분',
+--    current_status ENUM('UNKNOWN', 'ACTIVE', 'OFFLINE', 'WARNING', 'CRITICAL')
+--        NOT NULL DEFAULT 'UNKNOWN' COMMENT '관리자용 축약 상태',
+--    event_code VARCHAR(50) NULL COMMENT '이벤트 코드 (ok, device_down, stream_port_fail 등)',
+--    responsible_role ENUM('NETWORK_TECH', 'DEVICE_TECH', 'ADMIN') NULL COMMENT '담당 역할',
+--    severity ENUM('INFO', 'WARNING', 'CRITICAL') NOT NULL DEFAULT 'info' COMMENT '심각도',
+--    last_health_metric_id BIGINT NULL COMMENT '마지막 health_metrics ID 참조',
+--    icmp_avg_rtt_ms DOUBLE NULL COMMENT 'ICMP 평균 응답시간 (ms)',
+--    icmp_packet_loss_pct DOUBLE NULL COMMENT 'ICMP 패킷 손실률 (%)',
+--    last_update_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '캐시 갱신 시간',
+--
+--    PRIMARY KEY (cctv_id, environment_mode)
+--) DEFAULT CHARSET=utf8mb4
+--  COLLATE=utf8mb4_unicode_ci
+--  COMMENT='CCTV 현재 상태 캐시 - health_metrics 기반 집계, 환경별 공통 참조';

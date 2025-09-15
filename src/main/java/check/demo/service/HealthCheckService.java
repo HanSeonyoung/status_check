@@ -2,16 +2,19 @@ package check.demo.service;
 
 import check.demo.model.FFProbeResult;
 import check.demo.model.IcmpResult;
+import check.demo.model.cnfproperties.AppProperties;
+import check.demo.model.cnfproperties.RtspProperties;
 import check.demo.model.metrics.HealthMetric;
 import check.demo.repository.metrics.HealthMetricRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import static check.demo.service.FFProbeUtil.runFFProbe;
 
@@ -20,28 +23,36 @@ import static check.demo.service.FFProbeUtil.runFFProbe;
 @RequiredArgsConstructor
 public class HealthCheckService {
 
-    @Value("${RTSP_USERNAME}")
-    private String username;
-
-    @Value("${RTSP_PASSWORD}")
-    private String password;
-
-    @Value("${RTSP_PORT}")
-    private String port;
-
-    @Value("${RTSP_PATH}")
-    private String path;
+    private final RtspProperties rtspProperties;
+    private final AppProperties appProperties;
 
     private final HealthMetricRepository repository;
     private final IcmpChecker icmpChecker;
+    private final DevStatusCacheService devStatusCacheService;
 
     private static final double HIGH_RTT_THRESHOLD_MS = 200.0; // 고 RTT 기준 (ms)
+
+    @PostConstruct
+    public void validateConfiguration() {
+        log.info("RTSP Configuration validated: {}:*****@*:{}{}",
+                rtspProperties.getUsername(), rtspProperties.getPort(), rtspProperties.getPath());
+        log.info("Environment mode: {}", appProperties.getEnvironmentMode());
+    }
 
     @Async
     @Transactional("metricsTx") // 메트릭 DB 트랜잭션
     public void check(Long cctvId, String ip) {
-        String rtspUrl = String.format("rtsp://%s:%s@%s:%s%s", username, password, ip, port, path);
-        log.info("rtsp://{}:*****@{}:{}{}", username, ip, port, path);
+
+        String rtspUrl = String.format("rtsp://%s:%s@%s:%s%s",
+                rtspProperties.getUsername(),
+                rtspProperties.getPassword(),
+                ip,
+                rtspProperties.getPort(),
+                rtspProperties.getPath());
+
+        log.info("rtsp://{}:*****@{}:{}{}",
+                rtspProperties.getUsername(), ip, rtspProperties.getPort(), rtspProperties.getPath());
+
 
         IcmpResult icmp = icmpChecker.check(ip);
         FFProbeResult ffprobe = runFFProbe(rtspUrl);
@@ -62,7 +73,21 @@ public class HealthCheckService {
         metric.setEventCode(eventCode);
 
         // 메트릭 DB 저장
-        repository.save(metric);
+        HealthMetric savedMetric = repository.save(metric);
+
+        // TODO: service must be executed in Dev environment
+        // Dev Status Cache 업데이트 (RTT, 패킷손실 정보 포함)
+        devStatusCacheService.updateStatusCache(
+                cctvId,                                    // CCTV ID
+                eventCode,                                 // 진단된 이벤트 코드
+                savedMetric.getId(),                       // health_metric ID 참조
+                appProperties.getEnvironmentMode(),        // 환경 모드 (dev-env1, dev-env2)
+                savedMetric.getIcmpAvgRttMs(),                       // ICMP 평균 응답시간
+                savedMetric.getIcmpPacketLossPct()                   // ICMP 패킷 손실률
+        );
+
+        log.debug("Health check completed for CCTV {} - Event: {}, RTT: {}ms, Loss: {}%",
+                cctvId, eventCode, icmp.getAvgRttMs(), icmp.getPacketLossPct());
     }
 
     private String calculateEventCode(IcmpResult icmp, FFProbeResult ffprobe) {
@@ -135,6 +160,9 @@ public class HealthCheckService {
             return "STREAM_DATA_CORRUPTION"; // 레코드 7
         } else if (icmp.getStatus() == IcmpResult.Status.OK && ffprobe.getStatus() == FFProbeResult.Status.PORT_UNREACHABLE) {
             return "RTSP_PORT_FAIL"; // 레코드 3
+        } else if (icmp.getStatus() == IcmpResult.Status.TIMEOUT
+                && ffprobe.getStatus() == FFProbeResult.Status.PORT_UNREACHABLE) {
+            return "NETWORK_UNREACHABLE"; // 레코드 9
         }
 
         // 기본적으로 FFProbe 우선, 없으면 ICMP 코드
